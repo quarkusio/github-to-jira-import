@@ -1,62 +1,26 @@
-# quarkus-github-to-jira
+# Quarkus Github to JIRA import
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This application can be used to clone Quarkus issues from GitHub into product JIRA in a semi-automated interactive way.
+It finds PR candidates using the backport projects (for example, [this one](https://github.com/orgs/quarkusio/projects/56) for the 3.20 branch.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+*WARNING*: This script was written specifically for the Quarkus project and was not writen with other projects in mind. Therefore, there will be some parts of the code that only apply to the Quarkus process.
 
-## Running the application in dev mode
+## Usage
 
-You can run your application in dev mode that enables live coding using:
-
-```shell script
-./mvnw quarkus:dev
+Before running the application, make sure you define the following environment variables:
+```
+# needs the project:read permission of a user that has permission to read projects in the quarkusio org
+GITHUB_TOKEN
+# JIRA personal access token, 
+JIRA_TOKEN
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Run the app (using whichever method you prefer - `mvn quarkus:dev`, `mvn package && java -jar ...`, `quarkus run`,...).
 
-## Packaging and running the application
+Then, open the app (by default at http://localhost:8080) and follow the instructions.
+On the initial page, you will be asked to select a branch (3.20, 3.15,...) and a target 
+release (3.20.3) for which you want to import issues.
 
-The application can be packaged using:
-
-```shell script
-./mvnw package
-```
-
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/quarkus-github-to-jira-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+Then, the app will show you a list of PRs that are candidates for import. You can then select which ones to import.
+For each PR, there are two buttons in the rightmost column - "Create as a bug" and "Create as a component upgrade".
+It is up to you to decide which issue type is more appropriate.
