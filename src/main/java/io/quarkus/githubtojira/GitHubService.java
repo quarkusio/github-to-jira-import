@@ -67,7 +67,13 @@ public class GitHubService {
         Response response = client.executeSync(query, args);
         Log.info("GraphQL response: " + response.getData());
         AtomicInteger nullCounter = new AtomicInteger(0);
-        List<ProjectInfo> result = response.getData().getJsonObject("organization").getJsonObject("projectsV2").getJsonArray("nodes")
+        JsonObject data = response.getData();
+        if(data == null
+                || data.getValueType() == JsonValue.ValueType.NULL
+                || data.getJsonObject("organization").getJsonObject("projectsV2").getJsonArray("nodes").stream().allMatch(p -> p.getValueType() == JsonValue.ValueType.NULL)) {
+            throw new RuntimeException("No project data received from GitHub. Does your GITHUB_TOKEN have the project:read permission and are you member of the " + organization + " organization?");
+        }
+        List<ProjectInfo> result = data.getJsonObject("organization").getJsonObject("projectsV2").getJsonArray("nodes")
             .stream()
             .filter(node -> {
                 if (node.getValueType() == JsonValue.ValueType.NULL) {
