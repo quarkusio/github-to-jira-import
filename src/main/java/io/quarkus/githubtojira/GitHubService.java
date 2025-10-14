@@ -12,6 +12,7 @@ import io.smallrye.graphql.client.dynamic.api.DynamicGraphQLClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -23,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -42,44 +44,59 @@ public class GitHubService {
 
     public List<ProjectInfo> getBackportProjectsMap(Pattern namePattern) throws Exception {
         String query = """
-                query ($organization: String!) {
-                  organization(login: $organization) {
-                       projectsV2(first: 100) {
-                         nodes {
-                           title
-                           number
-                           field(name: "Status") {
-                             ... on ProjectV2SingleSelectField {
-                               options {
-                                 name
-                                 id
-                               }
-                             }
+            query ($organization: String!) {
+              organization(login: $organization) {
+                   projectsV2(first: 100) {
+                     nodes {
+                       title
+                       number
+                       field(name: "Status") {
+                         ... on ProjectV2SingleSelectField {
+                           options {
+                             name
+                             id
                            }
                          }
                        }
                      }
-                }
-                """;
+                   }
+                 }
+            }
+            """;
         Map<String, Object> args = Map.of("organization", organization);
         Response response = client.executeSync(query, args);
         Log.info("GraphQL response: " + response.getData());
-        return response.getData().getJsonObject("organization").getJsonObject("projectsV2").getJsonArray("nodes")
-                .stream()
-                .filter(node -> namePattern.matcher(node.asJsonObject().getString("title")).matches())
-                .map(node -> {
-                    String title = node.asJsonObject().getString("title");
-                    int number = node.asJsonObject().getInt("number");
-                    ProjectInfo projectInfo = new ProjectInfo();
-                    projectInfo.setNumber(number);
-                    projectInfo.setTitle(title);
-                    JsonArray options = node.asJsonObject().getJsonObject("field").getJsonArray("options");
-                    projectInfo.setVersions(options.stream().map(option -> option.asJsonObject().getString("name")).toArray(String[]::new));
-                    Log.info("Found project: " + projectInfo);
-                    return projectInfo;
-                })
-                .sorted(Comparator.comparing(projectInfo1 -> -projectInfo1.getNumber()))
-                .collect(Collectors.toList());
+        AtomicInteger nullCounter = new AtomicInteger(0);
+        List<ProjectInfo> result = response.getData().getJsonObject("organization").getJsonObject("projectsV2").getJsonArray("nodes")
+            .stream()
+            .filter(node -> {
+                if (node.getValueType() == JsonValue.ValueType.NULL) {
+                    nullCounter.incrementAndGet();
+                    return false;
+                } else {
+                    return true;
+                }
+            })
+            .filter(node -> node instanceof JsonObject && namePattern.matcher(node.asJsonObject().getString("title")).matches())
+            .map(node -> {
+                String title = node.asJsonObject().getString("title");
+                int number = node.asJsonObject().getInt("number");
+                ProjectInfo projectInfo = new ProjectInfo();
+                projectInfo.setNumber(number);
+                projectInfo.setTitle(title);
+                JsonArray options = node.asJsonObject().getJsonObject("field").getJsonArray("options");
+                projectInfo.setVersions(options.stream().map(option -> option.asJsonObject().getString("name")).toArray(String[]::new));
+                Log.info("Found project: " + projectInfo);
+                return projectInfo;
+            })
+            .sorted(Comparator.comparing(projectInfo1 -> -projectInfo1.getNumber()))
+            .toList();
+
+        if (nullCounter.get() > 0) {
+            Log.warn(nullCounter.get() + " projects had to be ignored because it seems you miss the permissions to read them");
+        }
+
+        return result;
     }
 
     public List<PullRequestInfo> getPullRequestsBackportedToVersion(Integer projectNumber, String fixVersion) throws Exception {
