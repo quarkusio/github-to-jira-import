@@ -5,17 +5,15 @@ It finds PR candidates using the backport projects (for example, [this one](http
 
 *WARNING*: This script was written specifically for the Quarkus project and was not writen with other projects in mind. Therefore, there will be some parts of the code that only apply to the Quarkus process.
 
+## Prerequisites
+
+- You need to have permission to read projects in the quarkusio repository.
+- You need to have permission to create issues in the product JIRA.
+- Generate a GitHub token with the `project:read` permission and set it as the `GITHUB_TOKEN` environment variable.
+- Generate a JIRA personal access token and set it as the `JIRA_TOKEN` environment property
+- Run the app (using whichever method you prefer - `mvn quarkus:dev`, `mvn package && java -jar ...`, `quarkus run`,...).
+
 ## Usage
-
-Before running the application, make sure you define the following environment variables:
-```
-# needs the project:read permission of a user that has permission to read projects in the quarkusio org
-GITHUB_TOKEN
-# JIRA personal access token, 
-JIRA_TOKEN
-```
-
-Run the app (using whichever method you prefer - `mvn quarkus:dev`, `mvn package && java -jar ...`, `quarkus run`,...).
 
 Then, open the app (by default at http://localhost:8080) and follow the instructions.
 On the initial page, you will be asked to select a branch (3.20, 3.15,...) and a target 
