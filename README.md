@@ -9,7 +9,7 @@ It finds PR candidates using the backport projects (for example, [this one](http
 
 - You need to have permission to read projects in the quarkusio organization.
 - You need to have permission to create issues in the product JIRA.
-- Generate a GitHub token with the `project:read` permission and set it as the `GITHUB_TOKEN` environment variable.
+- Generate a GitHub (classic, not fine-grained!) token with the `project` permission and set it as the `GITHUB_TOKEN` environment variable.
 - Generate a JIRA personal access token and set it as the `JIRA_TOKEN` environment property
 - Run the app (using whichever method you prefer - `mvn quarkus:dev`, `mvn package && java -jar ...`, `quarkus run`,...).
 
