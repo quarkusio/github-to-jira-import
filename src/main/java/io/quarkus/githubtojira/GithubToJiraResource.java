@@ -62,7 +62,7 @@ public class GithubToJiraResource {
         if (!pullRequests.isEmpty()) {
             List<JiraInfo> jiras = jiraService.findExistingJirasForPullRequests(
                     pullRequests.stream().map(PullRequestInfo::getUrl).toList(),
-                    jiraService.fixVersionToJiraVersion(fixVersion));
+                    jiraService.fixVersionToJiraVersionMajorMinorWildcard(fixVersion));
             for (PullRequestInfo pullRequest : pullRequests) {
                 pullRequest.setExistingJiras(new ArrayList<>());
                 jiras.stream().filter(jira -> jira.getGitPullRequestUrls().contains(pullRequest.getUrl()))

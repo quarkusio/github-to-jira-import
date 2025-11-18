@@ -70,11 +70,11 @@ public class JiraService {
 
     public List<JiraInfo> findExistingJirasForPullRequests(List<String> prUrls, String fixVersion) throws Exception {
         // construct a query that looks like:
-        // project = QUARKUS and fixVersion in ("2.13.GA") and ("Git Pull Request" ~ "url1" or "Git Pull Request" ~ "url2" or ...)
+        // project = QUARKUS and fixVersion ~ "2.13*" and ("Git Pull Request" ~ "url1" or "Git Pull Request" ~ "url2" or ...)
         // (the 'Git Pull Request' field does not support the IN operator...)
         String prUrlsClause = "(" + prUrls.stream().map(url -> "\"Git Pull Request\" ~ \"" + url + "\"").collect(Collectors.joining(" or ")) + ")";
         String query = "project = " + jiraProject + " " +
-                "and fixVersion in (\"" + fixVersion + "\") " +
+                "and fixVersion ~ \"" + fixVersion + "\" " +
                 "and " + prUrlsClause;
         Log.info("Jira query to find existing issues: " + query);
         SearchResult searchResult = client.getSearchClient().searchJql(query).get(timeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -98,6 +98,20 @@ public class JiraService {
     public String fixVersionToJiraVersion(String fixVersion) {
         // hopefully this will be enough for the time being
         return fixVersion + ".GA";
+    }
+
+    // Convert a Quarkus version to a wildcard that can be used for filtering the fixVersion JIRA field
+    // to find issues for the particular minor stream
+    // for example, 3.27.1 is turned into 3.27.*
+    // and we then later search in JIRA using this clause:
+    //      and fixVersion ~ "3.27.*"
+    public String fixVersionToJiraVersionMajorMinorWildcard(String fixVersion) {
+        String[] parts = fixVersion.split("\\.");
+        if (parts.length >= 2) {
+            return parts[0] + "." + parts[1] + ".*";
+        } else {
+            return fixVersion + ".*";
+        }
     }
 
     @PreDestroy
