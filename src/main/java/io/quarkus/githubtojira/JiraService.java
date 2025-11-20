@@ -77,19 +77,34 @@ public class JiraService {
                 "and fixVersion ~ \"" + fixVersion + "\" " +
                 "and " + prUrlsClause;
         Log.info("Jira query to find existing issues: " + query);
-        SearchResult searchResult = client.getSearchClient().searchJql(query).get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        int pageSize = 50;
+        int page = 0;
+        boolean hasNextPage = true;
         List<JiraInfo> result = new ArrayList<>();
-        for (Issue issue : searchResult.getIssues()) {
-            JiraInfo jiraInfo = new JiraInfo();
-            jiraInfo.setKey(issue.getKey());
-            jiraInfo.setUrl(jiraServer + "/browse/" + issue.getKey());
-            JSONArray urlsAsJsonArray = (JSONArray) issue.getField(pullRequestFieldId).getValue();
-            List<String> urls = new ArrayList<>();
-            for (int i = 0; i < urlsAsJsonArray.length(); i++) {
-                urls.add(urlsAsJsonArray.getString(i));
+        while(hasNextPage) {
+            hasNextPage = false;
+            SearchResult searchResult = client.getSearchClient()
+                    .searchJql(query, pageSize, page * pageSize, null)
+                    .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+
+            int foundSoFar = 0;
+            for (Issue issue : searchResult.getIssues()) {
+                foundSoFar++;
+                JiraInfo jiraInfo = new JiraInfo();
+                jiraInfo.setKey(issue.getKey());
+                jiraInfo.setUrl(jiraServer + "/browse/" + issue.getKey());
+                JSONArray urlsAsJsonArray = (JSONArray) issue.getField(pullRequestFieldId).getValue();
+                List<String> urls = new ArrayList<>();
+                for (int i = 0; i < urlsAsJsonArray.length(); i++) {
+                    urls.add(urlsAsJsonArray.getString(i));
+                }
+                jiraInfo.setGitPullRequestUrls(urls);
+                result.add(jiraInfo);
             }
-            jiraInfo.setGitPullRequestUrls(urls);
-            result.add(jiraInfo);
+            page++;
+            if(foundSoFar == pageSize) {
+                hasNextPage = true;
+            }
         }
         return result;
     }
