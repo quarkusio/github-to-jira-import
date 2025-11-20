@@ -66,7 +66,7 @@ public class GithubToJiraResource {
             for (PullRequestInfo pullRequest : pullRequests) {
                 pullRequest.setExistingJiras(new ArrayList<>());
                 jiras.stream().filter(jira -> jira.getGitPullRequestUrls().contains(pullRequest.getUrl()))
-                        .findFirst().ifPresent(jira -> {
+                        .forEach(jira -> {
                             Log.info("Linking existing jira " + jira.getUrl() + " to PR " + pullRequest.getUrl());
                             pullRequest.getExistingJiras().add(jira);
                         });
