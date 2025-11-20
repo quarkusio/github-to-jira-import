@@ -66,6 +66,7 @@ public class GitHubService {
         Map<String, Object> args = Map.of("organization", organization);
         Response response = client.executeSync(query, args);
         Log.info("GraphQL response: " + response.getData());
+        checkForErrors(response);
         AtomicInteger nullCounter = new AtomicInteger(0);
         JsonObject data = response.getData();
         if(data == null
@@ -106,39 +107,60 @@ public class GitHubService {
     }
 
     public List<PullRequestInfo> getPullRequestsBackportedToVersion(Integer projectNumber, String fixVersion) throws Exception {
-        String query = """
+        boolean hasNextPage = true;
+        String endCursor = null;
+        List<JsonValue> rawList = new ArrayList<>();
+        while(hasNextPage) {
+            String query = """
                 query ($organization: String!, $projectNumber: Int!) {
                   organization(login: $organization) {
                      projectV2(number: $projectNumber) {
-                       items {
+                       items(first: 100, after: %s) {
                          nodes {
-                          STATUS:fieldValueByName(name: "Status") {
-                            ... on ProjectV2ItemFieldSingleSelectValue {
-                              FIXVERSION:name
-                            }
-                          }
-                          content {
-                            ... on PullRequest {
-                              url
-                              title
-                              number
-                              bodyText
-                            }
-                          }
-                        }
-                      }
-                    }
+                           STATUS:fieldValueByName(name: "Status") {
+                             ... on ProjectV2ItemFieldSingleSelectValue {
+                               FIXVERSION:name
+                             }
+                           }
+                           content {
+                             ... on PullRequest {
+                               url
+                               title
+                               number
+                               bodyText
+                             }
+                           }
+                         }
+                         pageInfo {
+                           endCursor
+                           hasNextPage
+                         }
+                       }
+                     }
                   }
                 }
-                """;
-        Map<String, Object> args = Map.of("organization", organization,
-                                          "projectNumber", projectNumber); // unused
-        Response response = client.executeSync(query, args);
-        Log.info("GraphQL response: " + response.getData());
-        JsonArray pullRequests = response.getData().getJsonObject("organization").getJsonObject("projectV2").getJsonObject("items").getJsonArray("nodes");
+                """.formatted(endCursor == null ? null : "\"" + endCursor + "\"");
+            Map<String, Object> args = Map.of("organization", organization,
+                    "projectNumber", projectNumber); // unused
+            Response response = client.executeSync(query, args);
+            Log.debug("Query: " + query);
+            Log.debug("GraphQL response: " + response.getData());
+            checkForErrors(response);
+            JsonArray pullRequests = response.getData().getJsonObject("organization").getJsonObject("projectV2").getJsonObject("items").getJsonArray("nodes");
 
-        List<PullRequestInfo> list = new ArrayList<>();
-        for (JsonValue pullRequest : pullRequests) {
+            rawList.addAll(pullRequests);
+            endCursor = response.getData().getJsonObject("organization").getJsonObject("projectV2")
+                    .getJsonObject("items")
+                    .getJsonObject("pageInfo")
+                    .getString("endCursor");
+            hasNextPage = response.getData().getJsonObject("organization").getJsonObject("projectV2")
+                    .getJsonObject("items")
+                    .getJsonObject("pageInfo")
+                    .getBoolean("hasNextPage");
+        }
+        List<PullRequestInfo> finalList = new ArrayList<>();
+
+        for (JsonValue pullRequest : rawList) {
             // get only pull requests, because the query also returns issues
             if (pullRequest.asJsonObject().getJsonObject("content").get("url") != null) {
                 String version = pullRequest.asJsonObject().getJsonObject("STATUS").getString("FIXVERSION", null);
@@ -150,11 +172,19 @@ public class GitHubService {
                     prInfo.setNumber(pullRequest.asJsonObject().getJsonObject("content").getInt("number"));
                     prInfo.setDescription(pullRequest.asJsonObject().getJsonObject("content").getString("bodyText"));
                     Log.info("Found pull request: " + prInfo);
-                    list.add(prInfo);
+                    finalList.add(prInfo);
                 }
             }
         }
-        return list;
+        Log.info("Total pull requests found: " + finalList.size());
+        return finalList;
+    }
+
+    private void checkForErrors(Response response) {
+        if(response.hasError()) {
+            String errors = response.getErrors().stream().map(error -> error.toString()).collect(Collectors.joining());
+            throw new RuntimeException(errors);
+        }
     }
 
 }
