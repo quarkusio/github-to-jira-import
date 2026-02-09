@@ -18,16 +18,5 @@ jobs:
         distribution: 'temurin'
         cache: 'maven'
 
-# for PRs created from forks - skip tests because github won't pass env secrets to the workflow and the tests need them
     - name: Build without tests
-      if: github.event.pull_request.head.repo.full_name != github.repository
       run: mvn package -DskipTests
-
-# for PRs created from the main repo
-    - name: Build and test
-      if: github.event.pull_request.head.repo.full_name == github.repository
-      # The env secret is named GH_TOKEN because secrets starting with GITHUB_ aren't allowed
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
-      run: mvn package
