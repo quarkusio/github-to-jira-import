@@ -11,6 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
@@ -38,11 +39,12 @@ public class GithubToJiraResource {
     @CheckedTemplate
     public static class Templates {
 
-        public static native TemplateInstance index(List<ProjectInfo> projects);
+        public static native TemplateInstance index(List<ProjectInfo> projects, List<String> jiraFixVersions);
 
         public static native TemplateInstance importing(Integer projectNumber,
-                                                        String fixVersion,
-                                                        List<PullRequestInfo> pullRequests);
+                                                        String githubFixVersion,
+                                                        List<PullRequestInfo> pullRequests,
+                                                        String jiraFixVersion);
 
     }
 
@@ -50,19 +52,28 @@ public class GithubToJiraResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance index() throws Exception {
-        return Templates.index(gitHubService.getBackportProjectsMap(projectNamePattern));
+        return Templates.index(gitHubService.getBackportProjectsMap(projectNamePattern), jiraService.findExistingFixVersions());
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/pr-metadata/{prNumber}")
+    public PullRequestInfo getPullRequestMetadata(String prNumber) {
+        PullRequestInfo pr = gitHubService.getPullRequestInfo(prNumber);
+        pullRequestCache.put(pr.getNumber(), pr);
+        return pr;
     }
 
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Blocking
-    @Path("/importing/{projectNumber}/{fixVersion}")
-    public TemplateInstance importing(Integer projectNumber, String fixVersion) throws Exception {
-        List<PullRequestInfo> pullRequests = gitHubService.getPullRequestsBackportedToVersion(projectNumber, fixVersion);
+    @Path("/importing/{projectNumber}/{githubFixVersion}/{jiraFixVersion}")
+    public TemplateInstance importing(Integer projectNumber, String githubFixVersion, String jiraFixVersion) throws Exception {
+        List<PullRequestInfo> pullRequests = gitHubService.getPullRequestsBackportedToVersion(projectNumber, githubFixVersion);
         if (!pullRequests.isEmpty()) {
             List<JiraInfo> jiras = jiraService.findExistingJirasForPullRequests(
                     pullRequests.stream().map(PullRequestInfo::getUrl).toList(),
-                    jiraService.fixVersionToJiraVersionMajorMinorWildcard(fixVersion));
+                    jiraService.fixVersionToJiraVersionMajorMinorWildcard(githubFixVersion));
             for (PullRequestInfo pullRequest : pullRequests) {
                 pullRequest.setExistingJiras(new ArrayList<>());
                 jiras.stream().filter(jira -> jira.getGitPullRequestUrls().contains(pullRequest.getUrl()))
@@ -75,17 +86,17 @@ public class GithubToJiraResource {
         pullRequests.forEach(pr -> {
             pullRequestCache.put(pr.getNumber(), pr);
         });
-        return Templates.importing(projectNumber, fixVersion, pullRequests);
+        return Templates.importing(projectNumber, githubFixVersion, pullRequests, jiraFixVersion);
     }
 
     @GET
-    @Path("/import/{prNumber}/{fixVersion}/{type}")
-    public String performImport(Integer prNumber, String fixVersion, String type) throws Exception {
+    @Path("/import/{prNumber}/{jiraFixVersion}/{type}")
+    public String performImport(Integer prNumber, String jiraFixVersion, String type) throws Exception {
         PullRequestInfo pr = pullRequestCache.get(prNumber);
         if (pr == null) {
             throw new IllegalArgumentException("No PR with number " + prNumber + " found in the cache");
         }
-        return jiraService.createJira(pr.getUrl(), pr.getTitle(), jiraService.fixVersionToJiraVersion(fixVersion), type, pr.getDescription());
+        return jiraService.createJira(pr.getUrl(), pr.getTitle(), jiraFixVersion, type, pr.getDescription());
     }
 
 }

@@ -22,10 +22,14 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @ApplicationScoped
 public class JiraService {
@@ -62,10 +66,21 @@ public class JiraService {
     @ConfigProperty(name = "jira.transition-to-state")
     Integer transitionToState;
 
+    final Pattern fixVersionPattern = Pattern.compile("(\\d+\\.\\d+)\\.\\d+\\.GA");
+
     @PostConstruct
     public void init() throws URISyntaxException {
         client = new AsynchronousJiraRestClientFactory().create(new URI(jiraServer),
                 builder -> builder.setHeader("Authorization", "Bearer " + jiraToken));
+    }
+
+    public List<String> findExistingFixVersions() throws ExecutionException, InterruptedException {
+        List<String> fixVersions = StreamSupport.stream(client.getProjectClient().getProject(jiraProject).get().getVersions().spliterator(), false)
+                .map(version -> version.getName())
+                .filter(version -> fixVersionPattern.matcher(version).matches())
+                .sorted((o1, o2) -> -o1.compareTo(o2))
+                .toList();
+        return fixVersions;
     }
 
     public List<JiraInfo> findExistingJirasForPullRequests(List<String> prUrls, String fixVersion) throws Exception {
