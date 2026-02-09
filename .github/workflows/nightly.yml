@@ -1,0 +1,29 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    # Runs at 2 AM UTC (3 AM CET) every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Run tests
+      # The env secret is named GH_TOKEN because secrets starting with GITHUB_ aren't allowed
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+      run: mvn test
