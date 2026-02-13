@@ -57,6 +57,9 @@ public class JiraService {
     @ConfigProperty(name = "jira.issue-type-component-upgrade")
     Long issueTypeComponentUpgrade;
 
+    @ConfigProperty(name = "jira.issue-type-feature")
+    Long issueTypeFeature;
+
     @ConfigProperty(name = "testing-run")
     Boolean testingRun;
 
@@ -157,6 +160,7 @@ public class JiraService {
         long issueTypeId = switch (type) {
             case "bug" -> issueTypeBug;
             case "upgrade" -> issueTypeComponentUpgrade;
+            case "feature" -> issueTypeFeature;
             default -> throw new IllegalArgumentException("Unknown issue type: " + type);
         };
         if (testingRun) {

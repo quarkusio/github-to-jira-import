@@ -136,7 +136,7 @@
 					$.ajax('/pr-metadata/' + encodeURIComponent($('#manual-import-number').val()))
 							.done(function (f) {
 								$('#manual-metadata-loader').hide();
-								$('#manual-import-metadata-title').html("PR #" + f.number + ": " + f.title);
+								$('#manual-import-metadata-title').html("PR <a href=\"https://github.com/quarkusio/quarkus/pull/" + f.number+ "\">#" + f.number + "</a>: " + f.title);
 								$('#manual-create-button').removeClass('disabled');
 								$('#manual-create-button').show();
 								$('#manual-create-result').hide();
@@ -156,10 +156,11 @@
 				$('#manual-create-button').addClass('loading').removeClass('green');
 				$.ajax('/import/' + encodeURIComponent($('#manual-import-number').val()) + '/'
 							+ encodeURIComponent($('#manual-import-fix-version-selector').children("option:selected").val())
-							+ '/bug') // TODO: allow specifying issue type
+							+ '/feature') // TODO: allow specifying issue type
 						.done(function (f) {
 							$('#manual-create-button').removeClass('loading').addClass('positive disabled');
 							$('#manual-create-result').html("Created: <a href=" + f + ">" + f.substring(f.lastIndexOf('/') + 1) + "</a>");
+							$('#manual-create-result').show();
 						}).fail(function () {
 							$('#manual-create-button').removeClass('loading').addClass('negative disabled');
 							$('#manual-create-result').html("Error, please check server logs");
