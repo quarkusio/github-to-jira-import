@@ -19,15 +19,60 @@
 									</select>
 								</div>
 								<div class="field">
-									<label>Select a fix version</label>
+									<label>Select a fix version on GitHub</label>
 									<select class="ui search dropdown" id="fix-version-selector">
-										<option value="">Select fix version</option>
+										<option value="">Select fix version on GitHub</option>
 									</select>
 								</div>
-								<div class="ui submit green button" id="continue">Continue to imports</div>
+								<div class="field">
+									<label>Target JIRA fix version</label>
+									<select class="ui search dropdown" id="jira-fix-version-selector">
+										<option value="">Select fix version</option>
+										{#for fixVersion in jiraFixVersions}
+											<option value="{fixVersion}">{fixVersion}</option>
+											{/}
+									</select>
+								</div>
+								<div class="ui submit green button" id="continue">Continue to imports</div><br/><br/>
 							</div>
 						</div>
 					</div>
+
+					<div class="ui tall very padded piled segment">
+						<h3 class="ui header">Imports PRs manually by number</h3>
+						<div class="content">
+							<div class="ui form">
+								<div class="field">
+									<label>Target JIRA fix version</label>
+									<select class="ui search dropdown" id="manual-import-fix-version-selector">
+										<option value="">Select fix version</option>
+										{#for fixVersion in jiraFixVersions}
+											<option value="{fixVersion}">{fixVersion}</option>
+											{/}
+									</select>
+								</div>
+								<div class="field" id="manual-import-number-parent">
+									<label>Pull request number</label>
+									<input class="ui" id="manual-import-number"/>
+								</div>
+								<div class="ui submit green button" id="load-pr-metadata">Load PR metadata</div><br/><br/>
+								<div class="ui segment" style="display:none;" id="manual-metadata-loader">
+									<p></p>
+									<div class="ui active dimmer">
+										<div class="ui loader"></div>
+									</div>
+								</div>
+								<div id="manual-import-metadata-wrapper" style="display:none;">
+									<div class="ui message">
+										<div class="header" id="manual-import-metadata-title">REPLACE_ME</div><br/><br/>
+										<div class="ui submit green button" id="manual-create-button">Create JIRA</div>
+										<p class="ui" id="manual-create-result"></p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
 				</div>
 			</div>
 		</div>
@@ -75,8 +120,52 @@
 
 
 			$('#continue').click(function() {
-				window.location.href = '/importing/' + $('#project-selector').children("option:selected").val() + '/' + $('#fix-version-selector').children("option:selected").val() + '/';
+				window.location.href = '/importing/' + encodeURIComponent($('#project-selector').children("option:selected").val()) + '/'
+						+ $('#fix-version-selector').children("option:selected").val() + '/'
+						+ $('#jira-fix-version-selector').children("option:selected").val() + '/';
 				return false;
+			});
+
+			$('#load-pr-metadata').click(function() {
+				if(!$('#manual-import-number').val()) {
+					$('#manual-import-number-parent').addClass("error");
+				} else {
+					$('#manual-import-url-parent').removeClass("error");
+					$('#manual-metadata-loader').show();
+					$('#manual-import-metadata-wrapper').hide();
+					$.ajax('/pr-metadata/' + encodeURIComponent($('#manual-import-number').val()))
+							.done(function (f) {
+								$('#manual-metadata-loader').hide();
+								$('#manual-import-metadata-title').html("PR <a href=\"https://github.com/quarkusio/quarkus/pull/" + f.number+ "\">#" + f.number + "</a>: " + f.title);
+								$('#manual-create-button').removeClass('disabled');
+								$('#manual-create-button').show();
+								$('#manual-create-result').hide();
+								$('#manual-import-metadata-wrapper').show();
+							}).fail(function () {
+								$('#manual-metadata-loader').hide();
+								$('#manual-import-metadata-title').html("Error loading PR metadata, please check server logs");
+								$('#manual-create-button').removeClass('disabled');
+								$('#manual-create-button').hide();
+								$('#manual-create-result').hide();
+								$('#manual-import-metadata-wrapper').show();
+							});
+				}
+			});
+
+			$('#manual-create-button').click(function() {
+				$('#manual-create-button').addClass('loading').removeClass('green');
+				$.ajax('/import/' + encodeURIComponent($('#manual-import-number').val()) + '/'
+							+ encodeURIComponent($('#manual-import-fix-version-selector').children("option:selected").val())
+							+ '/feature') // TODO: allow specifying issue type
+						.done(function (f) {
+							$('#manual-create-button').removeClass('loading').addClass('positive disabled');
+							$('#manual-create-result').html("Created: <a href=" + f + ">" + f.substring(f.lastIndexOf('/') + 1) + "</a>");
+							$('#manual-create-result').show();
+						}).fail(function () {
+							$('#manual-create-button').removeClass('loading').addClass('negative disabled');
+							$('#manual-create-result').html("Error, please check server logs");
+						});
+
 			});
 		</script>
 	{/scripts}

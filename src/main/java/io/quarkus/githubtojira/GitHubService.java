@@ -42,6 +42,41 @@ public class GitHubService {
     String repository;
 
 
+    /**
+     * Retrieves information about a pull request given the PR number.
+     */
+    public PullRequestInfo getPullRequestInfo(String prNumber) {
+        String query = """
+            query ($owner: String!, $name: String!, $number: Int!) {
+                repository(owner: $owner, name: $name) {
+                    pullRequest(number: $number) {
+                        url
+                        title
+                        number
+                        bodyText
+                    }
+                }
+            }
+            """;
+        Map<String, Object> args = Map.of("owner", organization,
+                "name", repository,
+                "number", Integer.parseInt(prNumber));
+        try {
+            Response response = client.executeSync(query, args);
+            checkForErrors(response);
+            JsonObject prData = response.getData().getJsonObject("repository").getJsonObject("pullRequest");
+            PullRequestInfo prInfo = new PullRequestInfo();
+            prInfo.setUrl(prData.getString("url"));
+            prInfo.setTitle(prData.getString("title"));
+            prInfo.setNumber(prData.getInt("number"));
+            prInfo.setDescription(prData.getString("bodyText"));
+            return prInfo;
+        } catch (Exception e) {
+            Log.error("Error fetching pull request info for PR #" + prNumber, e);
+            return null;
+        }
+    }
+
     public List<ProjectInfo> getBackportProjectsMap(Pattern namePattern) throws Exception {
         String query = """
             query ($organization: String!) {

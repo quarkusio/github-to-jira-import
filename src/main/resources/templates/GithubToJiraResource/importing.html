@@ -5,7 +5,7 @@
         <h2>Pull requests to import</h2>
         <ul>
             <li>Data comes from this project: <a href="https://github.com/orgs/quarkusio/projects/{projectNumber}">https://github.com/orgs/quarkusio/projects/{projectNumber}</a></li>
-            <li>Limiting to PRs in the {fixVersion} column</li>
+            <li>Limiting to PRs in the {githubFixVersion} column</li>
         </ul>
         <table class="ui celled striped table">
             <thead>
@@ -48,7 +48,7 @@
                                     $('#create-as-bug-{pr.number}').prop("onclick", null).off("click");
                                     $('#create-as-bug-{pr.number}').addClass('loading').removeClass('blue');
 
-                                    $.ajax('/import/' + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{fixVersion}") + '/bug')
+                                    $.ajax('/import/' + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{jiraFixVersion}") + '/bug')
                                         .done(function (f) {
                                             $('#create-as-bug-{pr.number}').removeClass('loading').addClass('positive disabled');
                                             $('#create-as-bug-{pr.number} i').removeClass('bug').addClass('check');
@@ -64,7 +64,7 @@
                                     $('#create-as-upgrade-{pr.number}').prop("onclick", null).off("click");
                                     $('#create-as-upgrade-{pr.number}').addClass('loading').removeClass('blue');
 
-                                    $.ajax('/import/' + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{fixVersion}") + '/upgrade')
+                                    $.ajax('/import/' + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{jiraFixVersion}") + '/upgrade')
                                         .done(function (f) {
                                             $('#create-as-upgrade-{pr.number}').removeClass('loading').addClass('positive disabled');
                                             $('#create-as-upgrade-{pr.number} i').removeClass('upload').addClass('check');
