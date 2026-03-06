@@ -22,8 +22,6 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -57,8 +55,8 @@ public class JiraService {
     @ConfigProperty(name = "jira.issue-type-component-upgrade")
     Long issueTypeComponentUpgrade;
 
-    @ConfigProperty(name = "jira.issue-type-feature")
-    Long issueTypeFeature;
+    @ConfigProperty(name = "jira.issue-type-story")
+    Long issueTypeStory;
 
     @ConfigProperty(name = "testing-run")
     Boolean testingRun;
@@ -160,7 +158,7 @@ public class JiraService {
         long issueTypeId = switch (type) {
             case "bug" -> issueTypeBug;
             case "upgrade" -> issueTypeComponentUpgrade;
-            case "feature" -> issueTypeFeature;
+            case "feature" -> issueTypeStory;
             default -> throw new IllegalArgumentException("Unknown issue type: " + type);
         };
         if (testingRun) {
