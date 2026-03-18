@@ -1,12 +1,14 @@
 package io.quarkus.githubtojira;
 
 import com.atlassian.jira.rest.client.api.JiraRestClient;
+import com.atlassian.jira.rest.client.api.JiraRestClientFactory;
 import com.atlassian.jira.rest.client.api.domain.BasicIssue;
 import com.atlassian.jira.rest.client.api.domain.Issue;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.jira.rest.client.api.domain.input.IssueInput;
 import com.atlassian.jira.rest.client.api.domain.input.IssueInputBuilder;
 import com.atlassian.jira.rest.client.api.domain.input.TransitionInput;
+import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClient;
 import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientFactory;
 import io.atlassian.fugue.Iterables;
 import io.quarkus.githubtojira.model.JiraInfo;
@@ -21,8 +23,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -37,7 +41,7 @@ public class JiraService {
     @ConfigProperty(name = "jira.server")
     String jiraServer;
 
-    @ConfigProperty(name = "jira.token")
+    @ConfigProperty(name = "imports.jira.token")
     String jiraToken;
 
     @ConfigProperty(name = "jira.project")
@@ -72,7 +76,7 @@ public class JiraService {
     @PostConstruct
     public void init() throws URISyntaxException {
         client = new AsynchronousJiraRestClientFactory().create(new URI(jiraServer),
-                builder -> builder.setHeader("Authorization", "Bearer " + jiraToken));
+                builder -> builder.setHeader("Authorization", "Basic " + jiraToken));
     }
 
     public List<String> findExistingFixVersions() throws ExecutionException, InterruptedException {
@@ -93,34 +97,25 @@ public class JiraService {
                 "and fixVersion ~ \"" + fixVersion + "\" " +
                 "and " + prUrlsClause;
         Log.info("Jira query to find existing issues: " + query);
-        int pageSize = 50;
-        int page = 0;
         boolean hasNextPage = true;
+        String nextPageToken = null;
         List<JiraInfo> result = new ArrayList<>();
-        while(hasNextPage) {
-            hasNextPage = false;
-            SearchResult searchResult = client.getSearchClient()
-                    .searchJql(query, pageSize, page * pageSize, null)
+        while (hasNextPage) {
+            SearchResult searchResult;
+            searchResult = client.getSearchClient()
+                    .enhancedSearchJql(query, 1000, nextPageToken, Set.of("*all"), null)
                     .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-
-            int foundSoFar = 0;
             for (Issue issue : searchResult.getIssues()) {
-                foundSoFar++;
                 JiraInfo jiraInfo = new JiraInfo();
                 jiraInfo.setKey(issue.getKey());
                 jiraInfo.setUrl(jiraServer + "/browse/" + issue.getKey());
-                JSONArray urlsAsJsonArray = (JSONArray) issue.getField(pullRequestFieldId).getValue();
-                List<String> urls = new ArrayList<>();
-                for (int i = 0; i < urlsAsJsonArray.length(); i++) {
-                    urls.add(urlsAsJsonArray.getString(i));
-                }
-                jiraInfo.setGitPullRequestUrls(urls);
+                String pullRequestUrls = (String) issue.getField(pullRequestFieldId).getValue();
+                List<String> pullRequestUrlsList = Arrays.stream(pullRequestUrls.split("[\r\n,]")).map(String::trim).toList();
+                jiraInfo.setGitPullRequestUrls(pullRequestUrlsList);
                 result.add(jiraInfo);
             }
-            page++;
-            if(foundSoFar == pageSize) {
-                hasNextPage = true;
-            }
+            nextPageToken = searchResult.getNextPageToken();
+            hasNextPage = nextPageToken != null;
         }
         return result;
     }
@@ -178,7 +173,7 @@ public class JiraService {
         Log.info("Issue input: " + input);
         BasicIssue issue = client.getIssueClient().createIssue(input).get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         Log.info("Created issue: " + jiraServer + "/browse/" + issue.getKey());
-        if(transitionToState != 0) {
+        if (transitionToState != 0) {
             client.getIssueClient().transition(client.getIssueClient().getIssue(issue.getKey()).get(),
                     new TransitionInput(transitionToState, Collections.emptySet()));
         }

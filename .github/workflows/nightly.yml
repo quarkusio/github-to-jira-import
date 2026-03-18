@@ -22,8 +22,7 @@ jobs:
         cache: 'maven'
 
     - name: Run tests
-      # The env secret is named GH_TOKEN because secrets starting with GITHUB_ aren't allowed
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        IMPORTS_GITHUB_TOKEN: ${{ secrets.IMPORTS_GITHUB_TOKEN }}
+        IMPORTS_JIRA_TOKEN: ${{ secrets.IMPORTS_JIRA_TOKEN }}
       run: mvn test
