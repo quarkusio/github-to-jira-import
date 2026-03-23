@@ -39,7 +39,7 @@ public class SmokeTest {
         assertThat(existingJiras).hasSize(1);
         JiraInfo existingJira = existingJiras.get(0);
         assertThat(existingJira.getKey()).isEqualTo("QUARKUS-6834");
-        assertThat(existingJira.getUrl()).isEqualTo("https://issues.redhat.com/browse/QUARKUS-6834");
+        assertThat(existingJira.getUrl()).isEqualTo("https://redhat.atlassian.net//browse/QUARKUS-6834");
         assertThat(existingJira.getGitPullRequestUrls()).containsExactly("https://github.com/quarkusio/quarkus/pull/49874");
     }
 
