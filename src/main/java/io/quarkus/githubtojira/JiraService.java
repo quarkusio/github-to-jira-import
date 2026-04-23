@@ -160,6 +160,12 @@ public class JiraService {
             prTitle = "[TESTING, PLEASE IGNORE] " + prTitle;
             description = "IGNORE: I'm just testing a new JIRA import app\n\n " + description;
         }
+        // the maximum allowed length by Jira is 32767... leave some extra reserve
+        if(description.length() >= 32600) {
+            Log.warn("Truncating the description of PR " +  prUrl + " to 32600 characters " +
+                    "because it's too long for Jira (original length: " + description.length() + ")");
+            description = description.substring(0, 32600);
+        }
         IssueInput input = new IssueInputBuilder()
                 .setProjectKey(jiraProject)
                 .setSummary(prTitle)
