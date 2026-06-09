@@ -14,11 +14,13 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Path("/")
@@ -34,12 +36,15 @@ public class GithubToJiraResource {
     @Inject
     JiraService jiraService;
 
-    private final Map<Integer, PullRequestInfo> pullRequestCache = new HashMap<>();
+    @ConfigProperty(name = "manual.imports.repos")
+    List<String> reposForManualImports;
+
+    private final Map<RepoAndPrNumber, PullRequestInfo> pullRequestCache = new HashMap<>();
 
     @CheckedTemplate
     public static class Templates {
 
-        public static native TemplateInstance index(List<ProjectInfo> projects, List<String> jiraFixVersions);
+        public static native TemplateInstance index(List<ProjectInfo> projects, List<String> jiraFixVersions, List<String> reposForManualImports);
 
         public static native TemplateInstance importing(Integer projectNumber,
                                                         String githubFixVersion,
@@ -52,15 +57,15 @@ public class GithubToJiraResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance index() throws Exception {
-        return Templates.index(gitHubService.getBackportProjectsMap(projectNamePattern), jiraService.findExistingFixVersions());
+        return Templates.index(gitHubService.getBackportProjectsMap(projectNamePattern), jiraService.findExistingFixVersions(), reposForManualImports);
     }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/pr-metadata/{prNumber}")
-    public PullRequestInfo getPullRequestMetadata(String prNumber) {
-        PullRequestInfo pr = gitHubService.getPullRequestInfo(prNumber);
-        pullRequestCache.put(pr.getNumber(), pr);
+    @Path("/pr-metadata/{prNumber}/{repo}")
+    public PullRequestInfo getPullRequestMetadata(String prNumber, String repo) {
+        PullRequestInfo pr = gitHubService.getPullRequestInfo(prNumber, repo);
+        pullRequestCache.put(new RepoAndPrNumber(repo, pr.getNumber()), pr);
         return pr;
     }
 
@@ -84,19 +89,23 @@ public class GithubToJiraResource {
             }
         }
         pullRequests.forEach(pr -> {
-            pullRequestCache.put(pr.getNumber(), pr);
+            pullRequestCache.put(new RepoAndPrNumber(gitHubService.organization + "/" + gitHubService.repository, pr.getNumber()), pr);
         });
         return Templates.importing(projectNumber, githubFixVersion, pullRequests, jiraFixVersion);
     }
 
     @GET
-    @Path("/import/{prNumber}/{jiraFixVersion}/{type}")
-    public String performImport(Integer prNumber, String jiraFixVersion, String type) throws Exception {
-        PullRequestInfo pr = pullRequestCache.get(prNumber);
+    @Path("/import/{repo}/{prNumber}/{jiraFixVersion}/{type}")
+    public String performImport(String repo, Integer prNumber, String jiraFixVersion, String type) throws Exception {
+        PullRequestInfo pr = pullRequestCache.get(new RepoAndPrNumber(repo, prNumber));
         if (pr == null) {
             throw new IllegalArgumentException("No PR with number " + prNumber + " found in the cache");
         }
         return jiraService.createJira(pr.getUrl(), pr.getTitle(), jiraFixVersion, type, pr.getDescription());
+    }
+
+    private record RepoAndPrNumber(String repo, Integer prNumber) {
+
     }
 
 }

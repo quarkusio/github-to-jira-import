@@ -45,7 +45,7 @@ public class GitHubService {
     /**
      * Retrieves information about a pull request given the PR number.
      */
-    public PullRequestInfo getPullRequestInfo(String prNumber) {
+    public PullRequestInfo getPullRequestInfo(String prNumber, String repo) {
         String query = """
             query ($owner: String!, $name: String!, $number: Int!) {
                 repository(owner: $owner, name: $name) {
@@ -58,8 +58,10 @@ public class GitHubService {
                 }
             }
             """;
-        Map<String, Object> args = Map.of("owner", organization,
-                "name", repository,
+        String org = repo.split("/")[0];
+        String repoName = repo.split("/")[1];
+        Map<String, Object> args = Map.of("owner", org,
+                "name", repoName,
                 "number", Integer.parseInt(prNumber));
         try {
             Response response = client.executeSync(query, args);
