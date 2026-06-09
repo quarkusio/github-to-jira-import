@@ -51,6 +51,14 @@
 											{/}
 									</select>
 								</div>
+								<div class="field" id="manual-import-repo-parent">
+									<label>Repository</label>
+									<select class="ui search dropdown" id="manual-import-repo">
+										{#for repo in reposForManualImports}
+											<option>{repo}</option>
+											{/}
+									</select>
+								</div>
 								<div class="field" id="manual-import-number-parent">
 									<label>Pull request number</label>
 									<input class="ui" id="manual-import-number"/>
@@ -130,13 +138,14 @@
 				if(!$('#manual-import-number').val()) {
 					$('#manual-import-number-parent').addClass("error");
 				} else {
+					const repo = $('#manual-import-repo').val();
 					$('#manual-import-url-parent').removeClass("error");
 					$('#manual-metadata-loader').show();
 					$('#manual-import-metadata-wrapper').hide();
-					$.ajax('/pr-metadata/' + encodeURIComponent($('#manual-import-number').val()))
+					$.ajax('/pr-metadata/' + encodeURIComponent($('#manual-import-number').val()) + "/" + encodeURIComponent(repo))
 							.done(function (f) {
 								$('#manual-metadata-loader').hide();
-								$('#manual-import-metadata-title').html("PR <a href=\"https://github.com/quarkusio/quarkus/pull/" + f.number+ "\">#" + f.number + "</a>: " + f.title);
+								$('#manual-import-metadata-title').html("PR <a href=\"https://github.com/" + repo + "/pull/" + f.number+ "\">#" + f.number + "</a>: " + f.title);
 								$('#manual-create-button').removeClass('disabled');
 								$('#manual-create-button').show();
 								$('#manual-create-result').hide();
@@ -153,8 +162,10 @@
 			});
 
 			$('#manual-create-button').click(function() {
+				const repo = $('#manual-import-repo').val();
 				$('#manual-create-button').addClass('loading').removeClass('green');
-				$.ajax('/import/' + encodeURIComponent($('#manual-import-number').val()) + '/'
+				$.ajax('/import/' + encodeURIComponent(repo) + "/"
+							+ encodeURIComponent($('#manual-import-number').val()) + '/'
 							+ encodeURIComponent($('#manual-import-fix-version-selector').children("option:selected").val())
 							+ '/feature') // TODO: allow specifying issue type
 						.done(function (f) {
