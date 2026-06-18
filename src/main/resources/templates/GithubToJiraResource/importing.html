@@ -48,7 +48,8 @@
                                     $('#create-as-bug-{pr.number}').prop("onclick", null).off("click");
                                     $('#create-as-bug-{pr.number}').addClass('loading').removeClass('blue');
 
-                                    $.ajax('/import/' + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{jiraFixVersion}") + '/bug')
+                                    $.ajax('/import/' + encodeURIComponent("quarkusio/quarkus") + '/'
+                                        + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{jiraFixVersion}") + '/bug')
                                         .done(function (f) {
                                             $('#create-as-bug-{pr.number}').removeClass('loading').addClass('positive disabled');
                                             $('#create-as-bug-{pr.number} i').removeClass('bug').addClass('check');
@@ -64,7 +65,8 @@
                                     $('#create-as-upgrade-{pr.number}').prop("onclick", null).off("click");
                                     $('#create-as-upgrade-{pr.number}').addClass('loading').removeClass('blue');
 
-                                    $.ajax('/import/' + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{jiraFixVersion}") + '/upgrade')
+                                    $.ajax('/import/' + encodeURIComponent("quarkusio/quarkus") + '/'
+                                        + encodeURIComponent("{pr.number}") + '/' + encodeURIComponent("{jiraFixVersion}") + '/upgrade')
                                         .done(function (f) {
                                             $('#create-as-upgrade-{pr.number}').removeClass('loading').addClass('positive disabled');
                                             $('#create-as-upgrade-{pr.number} i').removeClass('upload').addClass('check');

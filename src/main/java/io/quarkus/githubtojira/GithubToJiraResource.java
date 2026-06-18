@@ -89,7 +89,7 @@ public class GithubToJiraResource {
             }
         }
         pullRequests.forEach(pr -> {
-            pullRequestCache.put(new RepoAndPrNumber(gitHubService.organization + "/" + gitHubService.repository, pr.getNumber()), pr);
+            pullRequestCache.put(new RepoAndPrNumber(gitHubService.getOrganization() + "/" + gitHubService.getRepository(), pr.getNumber()), pr);
         });
         return Templates.importing(projectNumber, githubFixVersion, pullRequests, jiraFixVersion);
     }

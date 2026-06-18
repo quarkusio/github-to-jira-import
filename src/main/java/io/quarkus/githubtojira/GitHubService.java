@@ -36,10 +36,10 @@ public class GitHubService {
     DynamicGraphQLClient client;
 
     @ConfigProperty(name = "github.organization")
-    String organization;
+    private String organization;
 
     @ConfigProperty(name = "github.repository")
-    String repository;
+    private String repository;
 
 
     /**
@@ -224,4 +224,11 @@ public class GitHubService {
         }
     }
 
+    public String getOrganization() {
+        return organization;
+    }
+
+    public String getRepository() {
+        return repository;
+    }
 }
