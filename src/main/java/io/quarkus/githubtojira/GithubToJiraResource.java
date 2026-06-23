@@ -101,7 +101,7 @@ public class GithubToJiraResource {
         if (pr == null) {
             throw new IllegalArgumentException("No PR with number " + prNumber + " found in the cache");
         }
-        return jiraService.createJira(pr.getUrl(), pr.getTitle(), jiraFixVersion, type, pr.getDescription());
+        return jiraService.createJira(pr.getUrl(), pr.getTitle(), jiraFixVersion, type, pr.getDescription(), pr.getJiraLabels());
     }
 
     private record RepoAndPrNumber(String repo, Integer prNumber) {

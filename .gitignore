@@ -42,3 +42,5 @@ target
 .gradle
 **/gradle/wrapper
 build
+
+.env

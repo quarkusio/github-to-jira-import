@@ -149,7 +149,7 @@ public class JiraService {
         }
     }
 
-    public String createJira(String prUrl, String prTitle, String fixVersion, String type, String description) throws Exception {
+    public String createJira(String prUrl, String prTitle, String fixVersion, String type, String description, Iterable<String> jiraLabels) throws Exception {
         long issueTypeId = switch (type) {
             case "bug" -> issueTypeBug;
             case "upgrade" -> issueTypeComponentUpgrade;
@@ -175,6 +175,7 @@ public class JiraService {
                 .setFixVersionsNames(Iterables.iterable(fixVersion))
                 .setComponentsNames(Iterables.iterable("team/eng"))
                 .setAssigneeName(assignee)
+                .setFieldValue("labels", jiraLabels)
                 .build();
         Log.info("Issue input: " + input);
         BasicIssue issue = client.getIssueClient().createIssue(input).get(timeout.toMillis(), TimeUnit.MILLISECONDS);
