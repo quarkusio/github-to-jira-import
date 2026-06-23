@@ -9,6 +9,9 @@ public class PullRequestInfo {
     private Integer number;
     private List<JiraInfo> existingJiras;
     private String description;
+    private List<String> labels;
+    private List<String> files;
+    private Iterable<String> jiraLabels;
 
     public String getUrl() {
         return url;
@@ -50,6 +53,30 @@ public class PullRequestInfo {
         this.description = description;
     }
 
+    public List<String> getLabels() {
+        return labels;
+    }
+
+    public void setLabels(List<String> labels) {
+        this.labels = labels;
+    }
+
+    public List<String> getFiles() {
+        return files;
+    }
+
+    public void setFiles(List<String> files) {
+        this.files = files;
+    }
+
+    public Iterable<String> getJiraLabels() {
+        return jiraLabels;
+    }
+
+    public void setJiraLabels(Iterable<String> jiraLabels) {
+        this.jiraLabels = jiraLabels;
+    }
+
     @Override
     public String toString() {
         return "PullRequestInfo{" +
@@ -57,6 +84,9 @@ public class PullRequestInfo {
                 ", title='" + title + '\'' +
                 ", number=" + number +
                 ", existingJiras=" + existingJiras +
+                ", labels=" + labels +
+                ", files=" + files +
+                ", jiraLabels=" + jiraLabels +
                 '}';
     }
 }

@@ -1,5 +1,6 @@
 package io.quarkus.githubtojira;
 
+import io.atlassian.fugue.Iterables;
 import io.quarkus.githubtojira.model.ProjectInfo;
 import io.quarkus.githubtojira.model.PullRequestInfo;
 import io.quarkus.logging.Log;
@@ -54,6 +55,19 @@ public class GitHubService {
                         title
                         number
                         bodyText
+                        labels(first:20) {
+                            nodes {
+                                name
+                            }
+                        }
+                        changedFiles
+                        additions
+                        deletions
+                        files(first: 50) {
+                            nodes {
+                                path
+                            }
+                        }
                     }
                 }
             }
@@ -72,11 +86,70 @@ public class GitHubService {
             prInfo.setTitle(prData.getString("title"));
             prInfo.setNumber(prData.getInt("number"));
             prInfo.setDescription(prData.getString("bodyText"));
+            List<String> labels = prData.getJsonObject("labels").getJsonArray("nodes").stream()
+                    .map(label -> label.asJsonObject().getString("name"))
+                    .toList();
+            Log.debug("PR labels: " + labels);
+
+            int changedFiles = prData.getInt("changedFiles");
+            int additions = prData.getInt("additions");
+            int deletions = prData.getInt("deletions");
+            List<String> files = prData.getJsonObject("files").getJsonArray("nodes").stream()
+                    .map(label -> label.asJsonObject().getString("path"))
+                    .toList();
+            Log.debug("Counts:   changedFiles: " + changedFiles + "\tadditions: " + additions + "\tdeletions: " + deletions);
+            Log.debug("Files: " + files);
+
+            Iterable<String> jiraLabels = jiraIssuesCategorization(labels, files);
+            Log.debug("JIRA labels: " + jiraLabels);
+
+            prInfo.setLabels(labels);
+            prInfo.setFiles(files);
+            prInfo.setJiraLabels(jiraLabels);
+
             return prInfo;
         } catch (Exception e) {
             Log.error("Error fetching pull request info for PR #" + prNumber, e);
             return null;
         }
+    }
+
+
+    private Iterable<String> jiraIssuesCategorization(List<String> prLabels, List<String> prFiles) {
+
+        if (checkLabelsAndPaths(prLabels, prFiles, List.of("area/documentation", "area/docstyle"),
+                List.of("docs/src"), List.of(".adoc", ".md"))) {
+            return Iterables.iterable("upstream-docs");
+        }
+
+        if (checkLabelsAndPaths(prLabels, prFiles, List.of("area/infra-automation"),
+                List.of(".github", ".mvn/maven.config", "devtools/cli/distribution"), List.of())) {
+            return Iterables.iterable("upstream-infra");
+        }
+
+        if (checkLabelsAndPaths(prLabels, prFiles, List.of("area/testing"),
+                List.of("test-framework", "integration-tests"), List.of("TestCase.java", "Test.java"))) {
+            return Iterables.iterable("upstream-testing");
+        }
+
+        return Iterables.emptyIterable();
+    }
+
+    private static boolean checkLabelsAndPaths(List<String> prLabels, List<String> prFiles, List<String> expectedLabels,
+                                               List<String> expectedPathStarts, List<String> expectedPathEnds) {
+
+        boolean prLabelsMatch = prLabels.stream()
+                .filter(label -> !label.startsWith("triage"))
+                .filter(label -> !label.startsWith("kind"))
+                .allMatch(label -> expectedLabels.contains(label));
+        boolean prFilesStartMatch = prFiles.stream()
+                .allMatch(changedFile -> expectedPathStarts.stream()
+                        .anyMatch(expectedPathStart -> changedFile.startsWith(expectedPathStart)));
+        boolean prFilesEndMatch = prFiles.stream()
+                .allMatch(changedFile -> expectedPathEnds.stream()
+                        .anyMatch(expectedPathEnd -> changedFile.endsWith(expectedPathEnd)));
+
+        return prLabelsMatch || prFilesStartMatch || prFilesEndMatch;
     }
 
     public List<ProjectInfo> getBackportProjectsMap(Pattern namePattern) throws Exception {
