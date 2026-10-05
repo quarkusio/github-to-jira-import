@@ -83,29 +83,7 @@ public class GitHubService {
             JsonObject prData = response.getData().getJsonObject("repository").getJsonObject("pullRequest");
             PullRequestInfo prInfo = new PullRequestInfo();
             prInfo.setUrl(prData.getString("url"));
-            prInfo.setTitle(prData.getString("title"));
-            prInfo.setNumber(prData.getInt("number"));
-            prInfo.setDescription(prData.getString("bodyText"));
-            List<String> labels = prData.getJsonObject("labels").getJsonArray("nodes").stream()
-                    .map(label -> label.asJsonObject().getString("name"))
-                    .toList();
-            Log.debug("PR labels: " + labels);
-
-            int changedFiles = prData.getInt("changedFiles");
-            int additions = prData.getInt("additions");
-            int deletions = prData.getInt("deletions");
-            List<String> files = prData.getJsonObject("files").getJsonArray("nodes").stream()
-                    .map(label -> label.asJsonObject().getString("path"))
-                    .toList();
-            Log.debug("Counts:   changedFiles: " + changedFiles + "\tadditions: " + additions + "\tdeletions: " + deletions);
-            Log.debug("Files: " + files);
-
-            Iterable<String> jiraLabels = jiraIssuesCategorization(labels, files);
-            Log.debug("JIRA labels: " + jiraLabels);
-
-            prInfo.setLabels(labels);
-            prInfo.setFiles(files);
-            prInfo.setJiraLabels(jiraLabels);
+            extractPrInfo(prInfo, prData);
 
             return prInfo;
         } catch (Exception e) {
@@ -238,6 +216,19 @@ public class GitHubService {
                                title
                                number
                                bodyText
+                               labels(first:20) {
+                                   nodes {
+                                       name
+                                   }
+                               }
+                               changedFiles
+                               additions
+                               deletions
+                               files(first: 50) {
+                                   nodes {
+                                       path
+                                   }
+                               }
                              }
                            }
                          }
@@ -283,9 +274,8 @@ public class GitHubService {
                 if (fixVersion.equals(version)) {
                     PullRequestInfo prInfo = new PullRequestInfo();
                     prInfo.setUrl(url);
-                    prInfo.setTitle(pullRequest.asJsonObject().getJsonObject("content").getString("title"));
-                    prInfo.setNumber(pullRequest.asJsonObject().getJsonObject("content").getInt("number"));
-                    prInfo.setDescription(pullRequest.asJsonObject().getJsonObject("content").getString("bodyText"));
+                    JsonObject contentObject = pullRequest.asJsonObject().getJsonObject("content");
+                    extractPrInfo(prInfo, contentObject);
                     Log.info("Found pull request: " + prInfo);
                     finalList.add(prInfo);
                 }
@@ -293,6 +283,33 @@ public class GitHubService {
         }
         Log.info("Total pull requests found: " + finalList.size());
         return finalList;
+    }
+
+    private void extractPrInfo(PullRequestInfo prInfo, JsonObject content) {
+        prInfo.setTitle(content.getString("title"));
+        prInfo.setNumber(content.getInt("number"));
+        prInfo.setDescription(content.getString("bodyText"));
+
+        List<String> labels = content.getJsonObject("labels").getJsonArray("nodes").stream()
+                .map(label -> label.asJsonObject().getString("name"))
+                .toList();
+        Log.debug("PR labels: " + labels);
+
+        int changedFiles = content.getInt("changedFiles");
+        int additions = content.getInt("additions");
+        int deletions = content.getInt("deletions");
+        List<String> files = content.getJsonObject("files").getJsonArray("nodes").stream()
+                .map(label -> label.asJsonObject().getString("path"))
+                .toList();
+        Log.debug("Counts:   changedFiles: " + changedFiles + "\tadditions: " + additions + "\tdeletions: " + deletions);
+        Log.debug("Files: " + files);
+
+        Iterable<String> jiraLabels = jiraIssuesCategorization(labels, files);
+        Log.debug("JIRA labels: " + jiraLabels);
+
+        prInfo.setLabels(labels);
+        prInfo.setFiles(files);
+        prInfo.setJiraLabels(jiraLabels);
     }
 
     private void checkForErrors(Response response) {
