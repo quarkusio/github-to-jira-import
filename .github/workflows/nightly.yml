@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    if: github.repository_owner == 'quarkusio'
     runs-on: ubuntu-latest
 
     steps:
