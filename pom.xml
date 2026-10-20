@@ -15,7 +15,7 @@
         <quarkus.platform.version>3.40.1</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.6.0</surefire-plugin.version>
-        <version.jira-client>8.0.0</version.jira-client>
+        <version.jira-client>8.0.1</version.jira-client>
         <version.fugue>7.0.1</version.fugue>
         <version.assertj>3.27.7</version.assertj>
     </properties>
